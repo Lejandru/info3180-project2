@@ -22,7 +22,255 @@ def index():
 ###
 # The functions below should be applicable to all Flask apps.
 ###
+@app.route("/api/register", methods=["POST"])
+def register():
+    form = RegisterForm(request.form)
+    photo = request.files["photo"]
+    form.photo.data = photo
+    if request.method == "POST" and form.validate_on_submit() == True:
+        username = form.username.data
+        password = form.password.data
+        name = form.name.data
+        email = form.email.data
+        location = form.location.data
+        bio = form.biography.data
+        photo = form.photo.data
+        photo = uploadPhoto(form.photo.data)
 
+        try:
+            #create user object and add to database
+            user = Users(username, password, name, email, location, bio, photo)
+            if user is not None:
+                db.session.add(user)
+                db.session.commit()
+
+                #flash message to indicate the a successful entry
+                success = "User sucessfully registered"
+                return jsonify(message=success), 201
+
+        except Exception as e:
+            print(e)
+            db.session.rollback()
+            error = "An error occured with the server. Try again!"
+            return jsonify(error=error), 401
+
+    #flash message to indicate registration failure
+    failure = "Error: Invalid/Missing user information"
+    return jsonify(error=failure), 401
+
+
+@app.route("/api/cars", methods=["POST"])
+@login_required
+@requires_auth
+def addNewCar():
+    form= NewCarForm(request.form)
+    photo = request.files["photo"]
+    form.photo.data = photo
+    if request.method == "POST" and form.validate_on_submit() == True:
+        #Gets the user input from the form
+        make = form.make.data
+        model = form.model.data
+        colour = form.colour.data
+        year = form.year.data
+        transmission = form.transmission.data
+        car_type = form.car_type.data
+        price = float(form.price.data)
+        description = form.description.data
+        photo = form.photo.data
+        photo = uploadPhoto(form.photo.data)
+        user_id = int(form.user_id.data)
+
+        try:
+        #create user object and add to database
+            car = Cars(description, make, model, colour, year, transmission, car_type, price, photo, user_id)
+            if car is not None:
+                db.session.add(car)
+                db.session.commit()
+
+                #flash message to indicate the a successful entry
+                success = "Car sucessfully added"
+                return jsonify(message=success), 201
+
+        except Exception as e:
+            print(e)
+            db.session.rollback()
+            error = "An error occured with the server. Try again!"
+            return jsonify(error=error), 401
+
+    #flash message to indicate failure
+    failure = "Error: Invalid/Missing information"
+    return jsonify(error=failure), 401
+
+
+
+
+@app.route("/api/cars", methods=["GET"])
+@requires_auth
+def allCars():
+    try:
+        cars = []
+        allcars = db.session.query(Cars).order_by(Cars.id.desc()).all()
+
+        for car in allcars:                                      
+
+            c = {"photo": os.path.join(app.config['GET_FILE'], car.photo), "year": car.year, "make": car.make,"price":car.price, "model":car.model}
+            cars.append(c)
+        return jsonify(cars=cars), 201
+    except Exception as e:
+        print(e)
+
+        error = "Internal server error"
+        return jsonify(error=error), 401
+
+
+
+#api route to allow the user to login into their profile on the application
+@app.route("/api/auth/login", methods=["POST"])
+def login():
+    form = LoginForm(request.form)
+    print(form.data)
+    if request.method == "POST":
+        # change this to actually validate the entire form submission
+        # and not just one field
+        if form.validate_on_submit():
+            # Get the username and password values from the form.
+            username = form.username.data
+            password = form.password.data
+           
+            user = db.session.query(Users).filter_by(username=username).first()
+
+            if user is not None and check_password_hash(user.password, password):
+                # get user id, load into session
+                login_user(user)
+
+                #creates bearer token for user
+                payload = {'user': user.username}
+                jwt_token = jwt.encode(payload, app.config['SECRET_KEY'], algorithm = 'HS256').decode('utf-8')
+
+                #Flash message to indicate a successful login
+                success = "User successfully logged in."
+                return jsonify(message=success, token=jwt_token, user_id=user.id)
+
+            error = "Incorrect username or password"
+            return jsonify(error=error), 401
+
+        #Flash message to indicate a failed login
+        failure = "Failed to login user"
+        return jsonify(error=failure)
+
+
+#api route to allow the user to logout
+@app.route("/api/auth/logout", methods=["GET"])
+@login_required
+@requires_auth
+def logout():
+    logout_user()
+
+    #Flash message indicating a successful logout
+    success = "User successfully logged out."
+    return jsonify(message=success)
+
+#Save the uploaded photo to a folder
+def uploadPhoto(upload):
+    filename = secure_filename(upload.filename)
+    upload.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    return filename
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return Users.query.get(user_id)
+
+@login_manager.unauthorized_handler
+def unauthorized_handler():
+    #NOT SURE WHY ITS NOT RENDERING PROPERLY FOR EVERYTHING SO I DID THIS INSTEAD FOR THE LOGIN CHECK SO YOU CAN LOGOUT
+    failure = "User not logged in"
+    return jsonify(error=failure)
+
+
+# gets the details of a specific car
+@app.route('/api/cars/<car_id>',methods=["GET"])
+@login_required
+@requires_auth
+def car_details(car_id):
+    if request.method=="GET":
+        try:
+            details= Cars.query.filter_by(id=car_id).first()
+            if details is not None:
+                return make_response(jsonify(details=details),201)
+            else:
+                return make_response(jsonify(response="Car not found"))
+        except Exception as e:
+            print(e)
+            error="Internal server error"
+            return make_response(jsonify(error=error)),401
+    
+#add car to favourites for logged in user
+@app.route('/api/cars/<car_id>/favourite',methods=["POST"])
+@login_required
+@requires_auth
+def add_user_fav_car(username,car_id):
+    if request.method=="POST":
+        user= Users.query.filter_by(username=username).first()
+        fav= Favs.query.filter_by(user_id=user.id,car_id=car_id).first()
+        if fav is None:
+            try:
+                db.session.add(fav)
+                db.session.commit()
+                return make_response(jsonify(response="Added to Favourites"))
+            except: 
+                make_response(jsonify(response="Could not be found"))
+        else:
+            return make_response(jsonify(response="Item is already in Favourites"))
+
+#search for cars by make or model
+@app.route('/api/search',methods=["GET"])
+@login_required
+@requires_auth
+def search_cars(username):
+    if request.method=="GET":
+        query= request.args.get('query')
+        query="%{}%".format(query)
+        cars= Cars.query.filter(or_(Cars.model.like(query), Cars.make.like(query)))
+        for car in cars:
+                return make_response(jsonify({"cars":[car.to_json]}))
+    else:
+        return make_response(jsonify(response="Could not be found"))
+
+# gets details of a user
+@app.route('/api/users/<user_id>',methods=["GET"])
+@login_required
+@requires_auth
+def user_details(user_id):
+    if request.method =="GET":
+        try:
+            details= Users.query.filter_by(id=user_id).first()
+            if details is not None:
+                return make_response(jsonify(details=details),201)
+            else:
+                return make_response(jsonify(response="User not found"))
+        except Exception as e:
+            print(e)
+            error="Internal server error"
+            return make_response(jsonify(error=error)),401
+
+
+@app.route('/api/users/<user_id>/favourites',methods=["GET"])
+@login_required
+@requires_auth
+#CSRF token to be added 
+def user_fav_car(username,user_id):
+    if request.method =="GET":
+        user= Users.query.filter_by(username=username).first()
+        favs=db.session.query(Cars).join(Favs).filter(Favs.user_id==user.id)
+
+        if favs is not None:
+            for fav in favs:
+                return make_response(jsonify({"favs":[fav.to_json]}))
+        else:
+            return make_response(jsonify(response="Could not be found"))
+
+    
 # Here we define a function to collect form errors from Flask-WTF
 # which we can later use
 def form_errors(form):
