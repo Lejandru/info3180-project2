@@ -5,9 +5,16 @@ Werkzeug Documentation:  https://werkzeug.palletsprojects.com/
 This file creates your application.
 """
 
-from app import app
-from flask import render_template, request, jsonify, send_file
 import os
+import datetime
+from app import app, db, login_manager, csrf
+from flask import render_template, request, redirect, url_for, flash, jsonify, g, make_response
+from flask_login import login_user, logout_user, current_user, login_required
+from app.forms import LoginForm, RegisterForm, NewCarForm
+from app.models import Users, Cars, Favs
+from werkzeug.utils import secure_filename
+from werkzeug.security import check_password_hash
+from sqlalchemy import or_
 
 
 ###
@@ -61,7 +68,7 @@ def register():
 
 @app.route("/api/cars", methods=["POST"])
 @login_required
-@requires_auth
+
 def addNewCar():
     form= NewCarForm(request.form)
     photo = request.files["photo"]
@@ -105,7 +112,7 @@ def addNewCar():
 
 
 @app.route("/api/cars", methods=["GET"])
-@requires_auth
+
 def allCars():
     try:
         cars = []
@@ -162,7 +169,7 @@ def login():
 #api route to allow the user to logout
 @app.route("/api/auth/logout", methods=["GET"])
 @login_required
-@requires_auth
+
 def logout():
     logout_user()
 
@@ -191,7 +198,7 @@ def unauthorized_handler():
 # gets the details of a specific car
 @app.route('/api/cars/<car_id>',methods=["GET"])
 @login_required
-@requires_auth
+
 def car_details(car_id):
     if request.method=="GET":
         try:
@@ -208,7 +215,7 @@ def car_details(car_id):
 #add car to favourites for logged in user
 @app.route('/api/cars/<car_id>/favourite',methods=["POST"])
 @login_required
-@requires_auth
+
 def add_user_fav_car(username,car_id):
     if request.method=="POST":
         user= Users.query.filter_by(username=username).first()
@@ -226,7 +233,7 @@ def add_user_fav_car(username,car_id):
 #search for cars by make or model
 @app.route('/api/search',methods=["GET"])
 @login_required
-@requires_auth
+
 def search_cars(username):
     if request.method=="GET":
         query= request.args.get('query')
@@ -240,7 +247,7 @@ def search_cars(username):
 # gets details of a user
 @app.route('/api/users/<user_id>',methods=["GET"])
 @login_required
-@requires_auth
+
 def user_details(user_id):
     if request.method =="GET":
         try:
@@ -257,7 +264,7 @@ def user_details(user_id):
 
 @app.route('/api/users/<user_id>/favourites',methods=["GET"])
 @login_required
-@requires_auth
+
 #CSRF token to be added 
 def user_fav_car(username,user_id):
     if request.method =="GET":
