@@ -1,84 +1,72 @@
 <template>
-  <div id="app">
-    <form @submit.prevent="login">
-        <div class="form-group">
+    <form @submit.prevent="registerUser" method="POST" enctype="multipart/form-data" id="registerForm">
+     
         <label>Username</label>
-        <input type="text" class="form-control form-control-lg"/>
-        </div>
+        <input type="username" id="username" class="form-control form-control-lg"/>
+    
       
-        <div class="form-group">
+      
         <label>Password</label>
-        <input type="password" class="form-control form-control-lg"/>
-        </div>
+        <input type="password" id="password" class="form-control form-control-lg"/>
+    
 
-        <div class="form-group">
+       
         <label>Name</label>
-        <input type="text" class="form-control form-control-lg"/>
-        </div>
+        <input type="text" id="name" class="form-control form-control-lg"/>
+     
 
-        <div class="form-group">
+       
         <label>Email</label>
-        <input type="email" class="form-control form-control-lg"/>
-        </div>
+        <input type="email" id="email" class="form-control form-control-lg"/>
+       
 
-        <div class="form-group">
+   
         <label>Location</label>
-        <input type="text" class="form-control form-control-lg"/>
-        </div>
+        <input type="text" id="location" class="form-control form-control-lg"/>
+   
 
-      <div>
+    
         <label for="Biography">Biography</label><br>
-        <textarea name="Biography" class="form-control"></textarea>
-      </div>
+        <textarea name="Biography" id="bio" class="form-control"></textarea>
+ 
 
-      <div>
+    
         <label for="photo"> Photo Upload </label><br>
         <input type="file" name="photo" class="form-control" id="photo"><br>
-      </div>
+      
 
      <button type="submit" class="btn btn-dark btn-lg btn-block">Register</button>
+
     </form>
-  </div>
+  
 </template>
 
 <script>
 export default {
-  name: "RegistrationForm",
+  name: "registerForm",
   data() {
     return {
-      username: "",
-      Password: "",
-      Name: "",
-      Email: "",
-      Location: "",
-      Biography: "",
-      address: ""
-    };
+      message: 'Registration successful!'
+    }
   },
   methods: {
-    async login() {
-      const { username, Password, Name, Email, Location,  Biography, address } = this;
-      const res = await fetch(
-        
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            username,
-            Password,
-            Name,
-            Email,
-            Location,
-            Biography,
-            address
-          })
-        }
-      );
-      const data = await res.json();
-      console.log(data);
+    registerUser(){
+      let registerForm = document.getElementById('registerForm');
+      let form_data = new FormData(registerForm);
+      let self = this
+      fetch("/api/register",{
+        method: 'POST',
+        body: form_data
+      })
+      .then(function (response) {
+        return response.json();
+      })
+      .then(function (data) {
+                
+        console.log(data);
+      })
+   
     }
   }
-};
+}
 </script>

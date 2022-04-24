@@ -43,10 +43,11 @@ def register():
         bio = form.biography.data
         photo = form.photo.data
         photo = uploadPhoto(form.photo.data)
+        date_joined = form.date_joined.data
 
         try:
             #create user object and add to database
-            user = Users(username, password, name, email, location, bio, photo)
+            user = Users(username, password, name, email, location, bio, photo, date_joined)
             if user is not None:
                 db.session.add(user)
                 db.session.commit()
