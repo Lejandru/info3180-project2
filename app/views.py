@@ -68,7 +68,7 @@ def register():
 
 
 @app.route("/api/cars", methods=["POST"])
-#@login_required
+@login_required
 
 def addNewCar():
     form= NewCarForm(request.form)
