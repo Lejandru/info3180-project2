@@ -2,11 +2,11 @@
 from . import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash
-from flask_login._compat import unicode
+# from flask_login._compat import unicode
 
 
 class Users(db.Model):
-    __tablename__ = 'Users'
+    __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -50,7 +50,7 @@ class Users(db.Model):
 
 
 class Cars(db.Model):
-    __tablename__ = 'Cars'
+    __tablename__ = 'cars'
 
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(1000), nullable=False)
@@ -62,7 +62,7 @@ class Cars(db.Model):
     car_type = db.Column(db.String(100), nullable=False)
     price = db.Column(db.Float, nullable=False)
     photo = db.Column(db.String(200), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
 
     def __init__(self, description, make, model, colour, year, transmission, car_type, price, photo, user_id):
         self.description = description
@@ -79,11 +79,11 @@ class Cars(db.Model):
 
 
 class Favs(db.Model):
-    __tablename__ = 'Favs'
+    __tablename__ = 'favs'
 
     id = db.Column(db.Integer, primary_key=True)
-    car_id = db.Column(db.Integer, db.ForeignKey('Cars.id', ondelete='CASCADE'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False)
+    car_id = db.Column(db.Integer, db.ForeignKey('cars.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
 
     def __init__(self, car_id, user_id):
         self.car_id = car_id
